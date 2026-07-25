@@ -10,10 +10,13 @@
 # - signal traps for more control of process execution, status and termination
 # - method to die gracefully with a colourised message
 
-# Version: 1.0
+# Version: 1.1
 # TODO:
 # - Make XDG compatible
 # - Add support for xclip and xsel under Linux with Linux detection in the copy_to_clipboard function
+# - Add generic function for prompting for y / n, with the question and a default answer
+# Changelog:
+# - Added function to launch the default browser: launch_browser
 # ######################################################################################################################
 
 # Setup and configuration:
@@ -83,6 +86,20 @@ copy_to_clipboard() {
 
   if uname -s | grep -q Darwin; then
     printf "%s" "${VALUE_TO_COPY}" | pbcopy
+  fi
+}
+
+# Function to launch the default browser:
+launch_browser() {
+  local URL="${1}"
+  if [ ! -z "${URL}" ]; then
+    if [[ "$OSTYPE" == darwin* ]]; then
+      open "${URL}"
+    elif [[ "$OSTYPE" == "linux"* ]]; then
+      xdg-open "${URL}" >/dev/null 2>&1 &
+    fi
+  else
+    die "${RED}You need to supply a URL parameter to use the launch_browser function!${NOCOL}"
   fi
 }
 
