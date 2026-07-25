@@ -12,6 +12,9 @@
 # - Generic gate for checking for an input file
 # - Generic function shell
 # - Main program block calling the function to do something
+# Version: 1.1
+# - Added commented block to check if the script is sourced, which is sometime required,
+#   for example if you need to set or update environment variables for the shell that invokes the script.
 # ######################################################################################################################
 
 # Setup and configuration:
@@ -35,6 +38,20 @@ else
   echo "${GET_SOURCES_SCRIPT}: Shell helper script not found where expected: $SHELL_HELPER_SCRIPT, cannot continue!"
   exit 1 # Cannot use die here as the method is in the shell helper script
 fi
+
+# Check if this script is called via `source` if required:
+## We're running Bash:
+#if [ -n "$BASH_VERSION" ]; then
+#  [[ "${BASH_SOURCE[0]}" != "$0" ]] && sourced=1
+## We're running Zsh:
+#elif [ -n "$ZSH_VERSION" ]; then
+#  [[ $ZSH_EVAL_CONTEXT =~ :file$ ]] && sourced=1 || sourced=0
+#fi
+
+## Validate if script is sourced or not, if not, die gracefully:
+#if [[ $sourced -eq 0 ]]; then
+#  die "${RED}You need to invoke this script through \`source\`!${NOCOL}\n${PURPLE}Usage: ${ORANGE}\`source <path>/"${GENERIC_SCRIPT_TEMPLATE_SCRIPT}"\`${NOCOL}\n"
+#fi
 
 # Check input file is supplied:
 #if [ -z "${GENERIC_INPUT_FILE}" ]; then
