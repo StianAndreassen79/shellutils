@@ -10,60 +10,68 @@
 # - signal traps for more control of process execution, status and termination
 # - method to die gracefully with a colourised message
 
+# Version: 1.2
+# Changelog:
+# - Made XDG compatible, using ~/.local, ~/.config and other XDG conventions instead of generics
 # Version: 1.1
-# TODO:
-# - Make XDG compatible
-# - Add support for xclip and xsel under Linux with Linux detection in the copy_to_clipboard function
-# - Add generic function for prompting for y / n, with the question and a default answer
 # Changelog:
 # - Added function to launch the default browser: launch_browser
+# - Added generic function for prompting for y / n, sending a question and a default answer
+
+# TODO:
+# - Add support for xclip and xsel under Linux with Linux detection in the copy_to_clipboard function
 # ######################################################################################################################
 
 # Setup and configuration:
-
-# Script name:
-SHELL_HELPERS_SCRIPT=`basename "${0}"`
 
 # Trap signals:
 trap 'die' SIGINT QUIT
 
 # Generic globals for this script:
-# Library directory:
-LIB_DIR="${HOME}/lib"
-# If the path needs to be relative to the script, it typically becomes:
-# LIB_DIR="./lib"
-# Generic config and cache directories:
-CONFIG_DIR="${HOME}/.config"
-CACHE_DIR="${HOME}/.cache"
-# Custom colourisation constants file:
-COLOUR_CONSTANTS="$CONFIG_DIR/colours.h"
+# Script name:
+SHELL_HELPERS_SCRIPT=`basename "${0}"`
+# Set configuration:
+CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+CONFIG_FILE="${CONFIG_HOME}/shellutils/shellutils.conf"
 
-# Ensure ~/.lib/ exists:
-if [ ! -d $LIB_DIR ]; then
-   echo -e "${SHELL_HELPERS_SCRIPT}: Local lib directory ${LIB_DIR} does not exist, creating.."
-   mkdir $LIB_DIR
+# Load configuration:
+if [ -e "${CONFIG_FILE}" ]; then
+  source "${CONFIG_FILE}"
+else
+  echo -e "${SHELL_HELPERS_TEST_SCRIPT}: Config file: '${CONFIG_FILE}' was not found where expected. Please run install.sh"
+  exit 1
 fi
 
-# AND / OR:
-
-# Ensure ./lib/ exists: (change the variable name here if both apply)
-#if [ ! -d $LIB_DIR ]; then
-#   echo -e "${SHELL_HELPERS_SCRIPT}: Script lib directory ${LIB_DIR} does not exist, creating.."
-#   mkdir $LIB_DIR
+# The XDG_ENV_SCRIPT should likely not need to be sourced during normal operations, it is mainly used by the installer. Leaving commented for noe
+# Check XDC environment variables script and source it:
+#if [ ! -e "${XDG_ENV_SCRIPT}" ]; then
+#  echo -e "${SHELL_HELPERS_SCRIPT}: XDG environment script '${XDG_ENV_SCRIPT}' does not exist, please run install.sh"
+#  exit 1
+#else
+#  source "${XDG_ENV_SCRIPT}"
 #fi
 
-# Ensure ~/.config/ exists:
-if [ ! -d $CONFIG_DIR ]; then
-   echo -e "${SHELL_HELPERS_SCRIPT}: Local config directory ${CONFIG_DIR} does not exist, creating.."
-   mkdir $CONFIG_DIR
+# Check XDC Base directory:
+if [ ! -d "${XDG_BASE}" ]; then
+  echo -e "${SHELL_HELPERS_SCRIPT}: XDG Base: '${HOME}/.local' does not exist, please run install.sh"
+  exit 1
 fi
 
-# Ensure ~/.cache/ exists:
-if [ ! -d $CACHE_DIR ]; then
-  echo -e "${SHELL_HELPERS_SCRIPT}: Local cache directory ${CACHE_DIR} does not exist, creating.."
-  mkdir $CACHE_DIR
+# Check XDG lib directory:
+if [ ! -e "${XDG_LIB_HOME}" ]; then
+  echo "${SHELL_HELPERS_SCRIPT}: XDG lib directory '${XDG_LIB_HOME}' not found, please run install.sh"
+  exit 1
 fi
 
+# Check source file for colours script:
+if [ ! -e "${COLOURS_SCRIPT}" ]; then
+  echo -e "${SHELL_HELPERS_SCRIPT}: The colourisation file is not found at '${COLOURS_SCRIPT}', please run install.sh"
+  exit 1
+fi
+
+# End of Setup and configuration
+
+# Functions:
 # Die function to exit gracefully from any script that sources this helper script:
 die () {
   echo -e "${NOCOL}"
@@ -73,7 +81,7 @@ die () {
 
 # Function to colourise shell script output from any script that sources this helper script:
 colourise () {
-  source ${COLOUR_CONSTANTS}
+  source "${COLOURS_SCRIPT}"
 }
 
 # Function to copy something to the clipboard:
@@ -89,6 +97,71 @@ copy_to_clipboard() {
   fi
 }
 
+# Useed by the askyesno() function to ensure we have a valid response
+validyesno() {
+  local response="$1"
+  if [[ "$response" =~ ^([Yy]([Ee][Ss])?|[Nn]([Oo])?)$ ]]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+# Useed by the askyesno() function to return a Booelan based on the string answer
+returnyesno() {
+  local answer="$1"
+  if [[ "$answer" =~ ^([Yy]([Ee][Ss])?)$ ]]; then
+    return 0
+  elif [[ "$answer" =~ ^([Nn]([Oo])?)$ ]]; then
+    return 1
+  fi
+}
+
+# Function to prompt for yes / no:
+# NOTE: this function returns:
+# 0 for any permutation of 'yY' or 'yes'
+# and
+# 1 for any permutation of 'n' or 'no'
+# If the user click enter at the prompt, the default answer is used,
+# Usage:
+# 1. Ask the question with the default answer. The default answer is required.
+# askyesno "${YELLOW}Would you like to do this task?${NOCCOL}" "n"
+# OR
+# askyesno "${YELLOW}Would you like to do this task?${NOCCOL}" "y"
+# 2. Evaulate the answer:
+# if [ $? -eq 0 ]; then
+#   # Do something useful for 'yes'
+# fi
+askyesno() {
+  local question="${1}"
+  local default_answer="${2}"
+  # Check that we have both parameters:
+  if [ ! -z "${question}" ] && [ ! -z "${default_answer}" ]; then
+    # Construct the answer prompt:
+    local answer_prompt="${PURPLE}[${GREEN}${default_answer}${PURPLE}]${NOCOL}"
+    echo -e -n "${question} ${answer_prompt} "
+    read response
+    response=${response:-${default_answer}}
+    if ! validyesno "$response"; then
+      # Loop until you've got a valid yes/no response:
+      while true; do
+        echo -e "${WHITE}Please answer: ${LIME_GREEN}y ${YELLOW}/ ${LIME_GREEN}n !${NOCOL}"
+        echo -e -n "${question} ${answer_prompt} "
+        read response
+        response=${response:-${default_answer}}
+        if validyesno "$response"; then
+          break
+          returnyesno "${response}"
+        fi
+      done
+    fi
+    # We have a valid response:
+    returnyesno "${response}"
+  else
+    die "${RED}${SHELL_HELPERS_SCRIPT}: You need to supply a question and a default answer parameter to use the askyesno function!${NOCOL}"
+  fi
+}
+
 # Function to launch the default browser:
 launch_browser() {
   local URL="${1}"
@@ -99,40 +172,9 @@ launch_browser() {
       xdg-open "${URL}" >/dev/null 2>&1 &
     fi
   else
-    die "${RED}You need to supply a URL parameter to use the launch_browser function!${NOCOL}"
+    die "${RED}${SHELL_HELPERS_SCRIPT}: You need to supply a URL parameter to use the launch_browser function!${NOCOL}"
   fi
 }
 
-# Check lib directory:
-if [ ! -d $LIB_DIR ]; then
-  echo "${SHELL_HELPERS_SCRIPT}: Library directory $LIB_DIR not found, cannot continue!"
-  exit 1
-fi
-
-# Check source file for colours header file:
-COLOURS_HEADER_SOURCE="${LIB_DIR}/colours.tgz"
-if [ ! -e $COLOURS_HEADER_SOURCE ]; then
-  echo -e "${SHELL_HELPERS_SCRIPT}: The colour constants header source file is not found at ${COLOURS_HEADER_SOURCE}, cannot continue!"
-  exit 1
-fi
-
-if [ ! -e "$COLOUR_CONSTANTS" ]; then
-  echo -e "${SHELL_HELPERS_SCRIPT}: The colour constants header file is not found at ${COLOUR_CONSTANTS}.\n"
-  echo -e -n "${SHELL_HELPERS_SCRIPT}: Would you like to install it to ${CONFIG_DIR} now? [y] "
-  read -r response
-  response=${response:-y}
-
-  if [[ "$response" == [Yy]* ]]; then
-    tar -xf "${COLOURS_HEADER_SOURCE}" -C "${CONFIG_DIR}"
-    echo -e "${SHELL_HELPERS_SCRIPT}: Installed the shell colours header file to ${CONFIG_DIR}"
-    colourise
-    echo -e "${YELLOW}${SHELL_HELPERS_SCRIPT}: ${GREEN}Script output is now ${RED}c${GREEN}o${BLUE}l${CYAN}o${LCYAN}u${ORANGE}r${WHITE}i${YELLOW}s${PURPLE}e${RED}d!${NOCOL}"
-    echo -e "${YELLOW}${SHELL_HELPERS_SCRIPT}: ${LIME_GREEN}Executing the remainder of the parent script..${NOCOL}\n"
-  else
-    echo -e "${SHELL_HELPERS_SCRIPT}: ERROR: The shell colours header file was not installed, script output would have printed ANSI colourisation codes!\n"
-    echo -e "${SHELL_HELPERS_SCRIPT}: Please run your script again to install the colourisation file."
-    exit 1
-  fi
-else
-  colourise
-fi
+# Colourise script output:
+colourise
