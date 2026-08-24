@@ -4,9 +4,18 @@
 # Description:
 # A test script from the generic_script_template.sh v1.2 template.
 # ######################################################################################################################
-# Version: 1.0
+# Version: 1.1
 # ######################################################################################################################
 # Changelog:
+# Version: 1.1
+# - shell_helpers.sh:
+#   - updates from ShellCheck:
+#   - backticks disablement
+#   - replace `! -z` with `-n`
+#   - added `-r` to instances of `read`
+# Testing:
+# - shell_helpers.sh: copy_to_clipboard
+# - shell_helpers.sh: launch_browser
 # Version: 1.0
 # Testing:
 # - shell_helpers.sh: askyesno
@@ -32,12 +41,14 @@ fi
 # Input file: Supply an input file at parameter $1
 GENERIC_INPUT_FILE="${1}"
 
+
 # Import generic shell helpers script:
 if [ ! -e "${SHELL_HELPER_SCRIPT}" ]; then
-  echo "${SHELL_HELPERS_TEST_SCRIPT}: Shell helper script not found where expected: ${SHELL_HELPER_SCRIPT}, please run install.sh!"
+  echo -e "${SHELL_HELPERS_TEST_SCRIPT}: Shell helper script not found where expected: ${SHELL_HELPER_SCRIPT}, please run install.sh!"
   exit 1
 else
- source "${SHELL_HELPER_SCRIPT}"
+ source "${SHELL_HELPER_SCRIPT}" # This the production path when shellutils is installed, cannot be used during testing
+ source ../lib/shell_helpers.sh  # Need to override the path to use the shell_helpers.sh script you're testing when running tests.
 fi
 
 # Check if this script is called via `source` if required:
@@ -70,16 +81,32 @@ fi
 
 # End of Functions
 
+# Test copy_to_clipboard:
+# Testing with special characters single-quoted:
+GARBAGE='this />??/.\ is a test'
+# Testing with special characters double-quoted:
+#GARBAGE="this />??/.\ is a test"
+copy_to_clipboard "${GARBAGE}"
+echo -e "${LIME_GREEN}Local variable \$GARBAGE: '$GARBAGE' was copied to your clipboard${NOCCOL}"
+
 # Main program:
-# Ask a question with a default answer:
-askyesno "${YELLOW}Would you like to open the ${LCYAN}Vault UI${YELLOW} in your default browser?${NOCCOL}" "y"
+# Testing askyesno:
+# Ask a question with a required default answer:
+askyesno "${YELLOW}Would you like to open the ${LCYAN}Vault UI${YELLOW} in your default browser?${NOCCOL}" "n"
 # Ask a question without a default answer, which will fail:
 #askyesno "${YELLOW}Would you like to open the ${LCYAN}Vault UI${YELLOW} in your default browser?${NOCCOL}"
+# Testing sending the question but not the required default answer
+#askyesno
+
 # Evaluate the answer:
+# shellcheck disable=SC2181
 if [ $? -eq 0 ]; then
-  echo "You answered yes"
+  #echo "You answered yes"
+  launch_browser "https://google.com"
+  #launch_browser
 else
-  echo "You answered no"
+  #echo "You answered no"
+  echo "Not opening browser"
 fi
 
 #magicFunction
