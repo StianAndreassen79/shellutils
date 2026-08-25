@@ -10,23 +10,19 @@
 # - signal traps for more control of process execution, status and termination
 # - method to die gracefully with a colourised message
 
+# Changelog:
 # Version: 1.2.1
 # - Updates from ShellCheck:
 # - backticks disablement
 # - replace `! -z` with `-n`
 # - added `-r` to instances of `read`
 # Version: 1.2
-# Changelog:
 # - Made XDG compatible, using ~/.local, ~/.config and other XDG conventions instead of generics
 # Version: 1.1
-# Changelog:
 # - Added function to launch the default browser: launch_browser
 # - Added generic function for prompting for y / n, sending a question and a default answer
 
 # TODO:
-# - Merge changes from 1.2.1 to 'templates-dev': generic_script_template.sh template.
-# - Merge changes from 1.2.1 to 'tests' branch
-# - Merge changes from 1.2.1 to 'install-dev' branch
 # - Add support for xclip and xsel under Linux with Linux detection in the copy_to_clipboard function
 # - Add support for enabling/disabling copy to clipboard functionality from translate_epoch_time.sh
 # ######################################################################################################################
